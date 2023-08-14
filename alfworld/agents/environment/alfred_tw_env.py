@@ -137,23 +137,27 @@ class AlfredTWEnv(object):
                             # write task desc to tw.game-pddl file
                             gamedata['grammar'] = grammar
                             if self.goal_desc_human_anns_prob > 0:
-                                json.dump(gamedata, open(game_file_path, 'w'))
+                                with open(game_file_path, 'w') as f:
+                                    json.dump(gamedata, f)
                             self.game_files.append(game_file_path)
                             continue
 
                 # To avoid making .tw game file, we are going to load the gamedata directly.
-                gamedata = dict(pddl_domain=self.game_logic['pddl_domain'],
-                                grammar=grammar,
-                                pddl_problem=open(pddl_path).read(),
-                                solvable=False)
-                json.dump(gamedata, open(game_file_path, "w"))
+                with open(pddl_path) as f:
+                    gamedata = dict(pddl_domain=self.game_logic['pddl_domain'],
+                                    grammar=grammar,
+                                    pddl_problem=f.read(),
+                                    solvable=False)
+                with open(game_file_path, 'w') as f:
+                    json.dump(gamedata, f)
 
                 # Check if game is solvable (expensive) and save it in the gamedata
                 if not env:
                     demangler = AlfredDemangler(shuffle=False)
                     env = textworld.start(game_file_path, wrappers=[demangler])
                 gamedata['solvable'], err, expert_steps = self.is_solvable(env, game_file_path)
-                json.dump(gamedata, open(game_file_path, "w"))
+                with open(game_file_path, 'w') as f:
+                    json.dump(gamedata, f)
 
                 # Skip unsolvable games
                 if not gamedata['solvable']:
@@ -180,9 +184,13 @@ class AlfredTWEnv(object):
             print("Evaluating with %d games" % (len(self.game_files)))
 
     def get_game_logic(self):
+        with open(os.path.expandvars(self.config['logic']['domain'])) as f:
+            pddl = f.read()
+        with open(os.path.expandvars(self.config['logic']['grammar'])) as f:
+            grammar = f.read()
         self.game_logic = {
-            "pddl_domain": open(os.path.expandvars(self.config['logic']['domain'])).read(),
-            "grammar": open(os.path.expandvars(self.config['logic']['grammar'])).read()
+            "pddl_domain": pddl,
+            "grammar": grammar,
         }
 
     # use expert to check the game is solvable
